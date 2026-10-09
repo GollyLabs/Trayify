@@ -1,0 +1,17 @@
+# Build output
+bin/
+obj/
+publish/
+artifacts/
+*.binlog
+
+# IDE / user files
+.vs/
+.vscode/
+*.user
+*.suo
+*.DotSettings.user
+
+# Test scratch
+*.bmp
+test-output/
