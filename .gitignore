@@ -20,3 +20,14 @@ test-output/
 *.log
 settings.json
 hidden.json
+
+# macOS / Swift / Xcode
+.DS_Store
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+Packages/
+
