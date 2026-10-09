@@ -3,7 +3,7 @@ using Trayify.Native;
 
 namespace Trayify.Core;
 
-public enum HideReason { CloseButton, MinimizeRightClick, AltF4, Manual, Command }
+public enum HideReason { CloseButton, MinimizeRightClick, AltF4, Hotkey, Manual, Command }
 
 /// <summary>Persisted record of a window Trayify hid (used for crash/kill recovery).</summary>
 public sealed class HiddenRecord

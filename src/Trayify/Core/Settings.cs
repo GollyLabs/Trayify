@@ -10,6 +10,9 @@ public sealed class AppRule
     public string? Path { get; set; }
     public string? DisplayName { get; set; }
     public DateTime Added { get; set; } = DateTime.Now;
+    /// <summary>Optional global shortcut: MOD_* flags (Alt=1, Ctrl=2, Shift=4, Win=8) and virtual-key code. 0 = none.</summary>
+    public uint HotkeyModifiers { get; set; }
+    public uint HotkeyKey { get; set; }
 }
 
 public sealed class AppSettings

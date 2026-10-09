@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Microsoft.UI;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -8,6 +9,8 @@ using Trayify.Core;
 using Trayify.Native;
 using Trayify.UI;
 using Windows.Graphics;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace Trayify;
 
@@ -53,6 +56,7 @@ public sealed partial class MainWindow : Window
 
         _core.Hidden.Changed += () => { RefreshHidden(); RefreshWindows(); };
         _core.SettingsChanged += () => { LoadSettings(); RefreshRules(); SyncRuleFlags(); };
+        if (_core.Hotkeys != null) _core.Hotkeys.StatusChanged += UpdateHotkeyErrors;
     }
 
     public void ShowAndActivate()
@@ -108,6 +112,8 @@ public sealed partial class MainWindow : Window
                 Name = r.DisplayName ?? r.Exe,
                 Path = r.Path,
                 Icon = Icon(r.Path ?? r.Exe, IntPtr.Zero, r.Path),
+                Hotkey = new Hotkey(r.HotkeyModifiers, r.HotkeyKey).ToString(),
+                Error = _core.Hotkeys?.ErrorFor(r.Exe) ?? "",
             });
         NoRulesText.Visibility = _rules.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -208,6 +214,88 @@ public sealed partial class MainWindow : Window
     private void OnSendToTray(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: long h }) _core.Hidden.Hide((IntPtr)h, HideReason.Manual);
+    }
+
+    // ---- shortcut recorder ----
+    private RuleItem? _recording;
+
+    private void UpdateHotkeyErrors()
+    {
+        foreach (var r in _rules) r.Error = _core.Hotkeys?.ErrorFor(r.Exe) ?? "";
+    }
+
+    private RuleItem? RuleFor(object sender) =>
+        sender is FrameworkElement { Tag: string exe } ? _rules.FirstOrDefault(r => r.Exe == exe) : null;
+
+    private void OnRecordHotkey(object sender, RoutedEventArgs e)
+    {
+        var item = RuleFor(sender);
+        if (item == null || item.IsRecording) return;
+        StopRecording();
+        _recording = item;
+        item.IsRecording = true;
+        item.Hint = "Press the new shortcut (Esc cancels, Backspace clears).";
+        _core.Hotkeys?.Suspend(); // so pressing the current combo doesn't trigger it
+        ((Control)sender).Focus(FocusState.Programmatic);
+    }
+
+    private void StopRecording()
+    {
+        if (_recording == null) return;
+        _recording.IsRecording = false;
+        _recording.Hint = "";
+        _recording = null;
+        _core.Hotkeys?.Resume();
+        UpdateHotkeyErrors();
+    }
+
+    private void OnRecorderLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_recording != null && _recording == RuleFor(sender)) StopRecording();
+    }
+
+    private static bool Down(VirtualKey k) =>
+        InputKeyboardSource.GetKeyStateForCurrentThread(k).HasFlag(CoreVirtualKeyStates.Down);
+
+    private void OnRecorderKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        var item = RuleFor(sender);
+        if (item == null || !item.IsRecording) return;
+        e.Handled = true;
+        var key = e.Key;
+        if (key is VirtualKey.Control or VirtualKey.LeftControl or VirtualKey.RightControl or VirtualKey.Shift or VirtualKey.LeftShift
+            or VirtualKey.RightShift or VirtualKey.Menu or VirtualKey.LeftMenu or VirtualKey.RightMenu or VirtualKey.LeftWindows or VirtualKey.RightWindows)
+            return; // wait for the actual key
+
+        uint mods = 0;
+        if (Down(VirtualKey.Control)) mods |= Hotkey.MOD_CONTROL;
+        if (Down(VirtualKey.Menu)) mods |= Hotkey.MOD_ALT;
+        if (Down(VirtualKey.Shift)) mods |= Hotkey.MOD_SHIFT;
+        if (Down(VirtualKey.LeftWindows) || Down(VirtualKey.RightWindows)) mods |= Hotkey.MOD_WIN;
+
+        if (mods == 0 && key == VirtualKey.Escape) { StopRecording(); return; }
+        if (mods == 0 && key is VirtualKey.Back or VirtualKey.Delete)
+        {
+            var exe = item.Exe;
+            StopRecording();
+            _core.SetHotkey(exe, default);
+            return;
+        }
+        bool isFKey = key >= VirtualKey.F1 && key <= VirtualKey.F24;
+        if (mods == 0 && !isFKey)
+        {
+            item.Hint = "Use at least one modifier (Ctrl, Alt, Shift or Win), or an F-key.";
+            return;
+        }
+        var hk = new Hotkey(mods, (uint)key);
+        var target = item.Exe;
+        StopRecording();
+        _core.SetHotkey(target, hk); // re-registers; failures show up as the rule's red message
+    }
+
+    private void OnClearHotkey(object sender, RoutedEventArgs e)
+    {
+        if (RuleFor(sender) is { } item) _core.SetHotkey(item.Exe, default);
     }
 
     private void OnRefresh(object sender, RoutedEventArgs e)

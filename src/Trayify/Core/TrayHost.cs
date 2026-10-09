@@ -28,6 +28,7 @@ public sealed class TrayHost : IDisposable
     public Func<bool>? GetRightClickEnabled;
     public Func<IReadOnlyList<HiddenWindow>>? GetHidden;
     public Action? Tick;
+    public Action<int>? HotkeyPressed;
 
     public IntPtr Handle => _hwnd;
 
@@ -132,6 +133,7 @@ public sealed class TrayHost : IDisposable
                 return IntPtr.Zero;
             }
             if (msg == N.WM_TIMER) { Tick?.Invoke(); return IntPtr.Zero; }
+            if (msg == N.WM_HOTKEY) { HotkeyPressed?.Invoke((int)wParam); return IntPtr.Zero; }
         }
         catch (Exception ex) { Log.Error("Tray WndProc error", ex); }
         return N.DefWindowProc(hwnd, msg, wParam, lParam);

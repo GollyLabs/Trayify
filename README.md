@@ -9,6 +9,19 @@ instead of closing or minimizing them.
   Turn on **Close to tray** for one and that app's title-bar **X** hides the window to the tray
   instead of closing it. Rules are keyed by exe name (e.g. `grok bot.exe`), saved across
   restarts, and you can remove them under *Close-to-tray apps*.
+- **Per-app global shortcut (optional).** Each close-to-tray rule can have a shortcut. Under
+  *Close-to-tray apps*, click **Set shortcut** and press the combination you want: Esc cancels,
+  Backspace clears, and the ✕ button removes it. The shortcut is saved with the rule and
+  registered at startup. If Windows refuses it because another app (or another rule) already uses
+  that combination, the rule shows a red warning. Pressing the shortcut:
+  - restores the app's window if Trayify has it hidden in the tray (focused, prior position);
+  - hides the app to the tray if its window is the active window;
+  - brings the app to the front (un-minimizing it if needed) if it's open but minimized or behind
+    other windows;
+  - does nothing if the app isn't running (Trayify doesn't launch apps).
+
+  The shortcut is registered system-wide with `RegisterHotKey`, so the app doesn't see it while it
+  is assigned. For example, if Ctrl+G is set for Grok Bot, Ctrl+G stops reaching other apps.
 - **Right-click minimize to tray (global toggle).** Right-click the minimize button of *any*
   window to hide it in the tray.
 - **Alt+F4 to tray** (optional) for apps that have a close-to-tray rule.
@@ -71,10 +84,15 @@ target app, and returning non-zero swallows that input.
      the title-bar band. It looks for a `Button` named *Close* / *Minimize* in the right half of
      the title band and caches its rectangle, so the click handler itself only does a rectangle
      test. (Low-level hooks must return fast, so cross-process UIA calls can't run inside the hook.)
-4. **Alt+F4.** When Alt+F4 is pressed and the foreground window belongs to an app with a rule,
+4. **Per-app shortcuts** use `RegisterHotKey` on Trayify's hidden tray window rather than the
+   low-level hook. Windows delivers `WM_HOTKEY` no matter which window is focused (elevated ones
+   included), consumes the key so the focused app doesn't also act on it, and lets the receiving
+   process take the foreground. Repeats are suppressed (`MOD_NOREPEAT`). While the recorder is
+   capturing a new shortcut, all shortcuts are temporarily unregistered.
+5. **Alt+F4.** When Alt+F4 is pressed and the foreground window belongs to an app with a rule,
    Trayify swallows the key and hides the window. It also sends a harmless unassigned key so the
    app doesn't treat the lone Alt release as "open the menu bar".
-5. **Hiding** is `ShowWindow(SW_HIDE)` on the window and its visible owned windows, which also
+6. **Hiding** is `ShowWindow(SW_HIDE)` on the window and its visible owned windows, which also
    removes the taskbar button. Activation moves to the next window in Z-order, as Windows does
    when a window closes. **Restoring** is `SW_SHOW`, then the saved rectangle if the window
    moved, then a reliable foreground switch.
@@ -94,7 +112,9 @@ Send a command with `Trayify.exe --cmd <command>` or `tools\TrayifyTest pipe <co
 `ping`, `show`, `quit`, `status`, `list` (hidden windows), `restore <hwnd>`, `restore-all`,
 `hide <hwnd>`, `pending`, `rules`, `add-rule <exe>`, `remove-rule <exe>`,
 `set rightclick|altf4|uia on|off`, `probe <x> <y>` (what a click there would do),
-`probe-uia <x> <y>`, `window`, `startup on|off|status`, `set-startup-path <path>`.
+`probe-uia <x> <y>`, `window`, `startup on|off|status`, `set-startup-path <path>`,
+`hotkeys` (registration status), `set-hotkey <exe> <combo|none>` (e.g. `set-hotkey grok bot.exe Ctrl+G`),
+`toggle-app <exe>` (the same action as pressing the app's shortcut).
 
 `tools/TrayifyTest` is the end-to-end test driver. It clicks the real caption buttons with
 `SendInput` and checks the results through the pipe. Close clicks use a fail-safe protocol: the

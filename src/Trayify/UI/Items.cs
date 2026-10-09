@@ -13,6 +13,7 @@ public abstract class Observable : INotifyPropertyChanged
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
+    protected void OnChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 public sealed class OpenWindowItem : Observable
@@ -31,7 +32,7 @@ public sealed class OpenWindowItem : Observable
     public bool IsRule { get => _isRule; set => Set(ref _isRule, value); }
 }
 
-public sealed class RuleItem
+public sealed class RuleItem : Observable
 {
     public string Exe { get; init; } = "";
     public string Name { get; init; } = "";
@@ -39,6 +40,36 @@ public sealed class RuleItem
     public ImageSource? Icon { get; init; }
     public string Details => Path ?? Exe;
     public string RemoveLabel => $"Remove {Exe}";
+    public string ShortcutLabel => $"Shortcut for {Exe}";
+    public string ClearShortcutLabel => $"Clear shortcut for {Exe}";
+
+    private string _hotkey = "";
+    /// <summary>Saved shortcut text, e.g. "Ctrl+G" ("" = none).</summary>
+    public string Hotkey { get => _hotkey; set { Set(ref _hotkey, value); Raise(); } }
+
+    private bool _recording;
+    public bool IsRecording { get => _recording; set { Set(ref _recording, value); Raise(); } }
+
+    private string _hint = "";
+    /// <summary>Recorder hint ("Use at least one modifier...").</summary>
+    public string Hint { get => _hint; set { Set(ref _hint, value); Raise(); } }
+
+    private string _error = "";
+    /// <summary>Registration failure (combo already taken), shown in red.</summary>
+    public string Error { get => _error; set { Set(ref _error, value); Raise(); } }
+
+    public string ShortcutButtonText => IsRecording ? "Press a shortcut…" : Hotkey.Length > 0 ? Hotkey : "Set shortcut";
+    public Microsoft.UI.Xaml.Visibility ClearVisibility => Hotkey.Length > 0 && !IsRecording ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+    public string Message => Error.Length > 0 ? Error : Hint;
+    public Microsoft.UI.Xaml.Visibility MessageVisibility => Message.Length > 0 ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    private void Raise()
+    {
+        OnChanged(nameof(ShortcutButtonText));
+        OnChanged(nameof(ClearVisibility));
+        OnChanged(nameof(Message));
+        OnChanged(nameof(MessageVisibility));
+    }
 }
 
 public sealed class HiddenItem

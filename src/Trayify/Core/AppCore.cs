@@ -16,6 +16,7 @@ public sealed class AppCore : IDisposable
 
     public AppSettings Settings { get; private set; } = SettingsStore.Load();
     public HiddenWindowManager Hidden { get; } = new();
+    public HotkeyManager? Hotkeys { get; private set; }
     public event Action? SettingsChanged;
 
     public Action? ShowWindowRequested;
@@ -39,6 +40,8 @@ public sealed class AppCore : IDisposable
             GetHidden = () => Hidden.Hidden,
             Tick = Hidden.Prune,
         };
+        Hotkeys = new HotkeyManager(_tray.Handle);
+        _tray.HotkeyPressed = id => { if (Hotkeys.ExeForId(id) is { } exe) ToggleApp(exe); };
         Hidden.WindowHidden += hw => _tray.AddWindowIcon(hw);
         Hidden.WindowRemoved += hw => _tray.RemoveWindowIcon(hw);
 
@@ -60,6 +63,7 @@ public sealed class AppCore : IDisposable
         _interceptor.RightClickMinimize = Settings.RightClickMinimize;
         _interceptor.AltF4ToTray = Settings.AltF4ToTray;
         _detector.UiaEnabled = Settings.UiaFallback;
+        Hotkeys?.Apply(Settings.Rules);
     }
 
     public void Update(Action<AppSettings> change)
@@ -84,6 +88,55 @@ public sealed class AppCore : IDisposable
     {
         Update(s => s.Rules.RemoveAll(r => r.Exe.Equals(exe, StringComparison.OrdinalIgnoreCase)));
         Log.Info($"Rule removed: {exe}");
+    }
+
+    public void SetHotkey(string exe, Hotkey hk)
+    {
+        Update(s =>
+        {
+            foreach (var r in s.Rules.Where(r => r.Exe.Equals(exe, StringComparison.OrdinalIgnoreCase)))
+            {
+                r.HotkeyModifiers = hk.Modifiers;
+                r.HotkeyKey = hk.Key;
+            }
+        });
+        Log.Info($"Hotkey for {exe} set to '{hk}'");
+    }
+
+    /// <summary>
+    /// Per-rule shortcut action:
+    ///  - a window of the app is hidden in the tray  -> restore it (focused, prior position);
+    ///  - the app's window is the active window      -> hide it to the tray;
+    ///  - the app is open but minimized/behind others -> bring it to the front;
+    ///  - the app isn't running                       -> nothing (logged).
+    /// </summary>
+    public string ToggleApp(string exe)
+    {
+        var hidden = Hidden.Hidden.LastOrDefault(h => h.ExeName.Equals(exe, StringComparison.OrdinalIgnoreCase));
+        if (hidden != null)
+        {
+            Hidden.Restore(hidden.Hwnd);
+            return "restored";
+        }
+
+        var fg = N.GetForegroundWindow();
+        var fgRoot = fg == IntPtr.Zero ? IntPtr.Zero : N.GetAncestor(fg, N.GA_ROOT);
+        if (fgRoot != IntPtr.Zero && !N.IsIconic(fgRoot) && N.IsWindowVisible(fgRoot) &&
+            exe.Equals(ProcessInfo.GetExeName(N.ProcessIdOf(fgRoot)), StringComparison.OrdinalIgnoreCase))
+        {
+            return Hidden.Hide(fgRoot, HideReason.Hotkey) != null ? "hidden" : "hide-failed";
+        }
+
+        var win = WindowUtil.GetAppWindows().FirstOrDefault(w => w.ExeName.Equals(exe, StringComparison.OrdinalIgnoreCase));
+        if (win != null)
+        {
+            if (N.IsIconic(win.Hwnd)) N.ShowWindow(win.Hwnd, N.SW_RESTORE);
+            bool ok = WindowUtil.ForceForeground(win.Hwnd);
+            Log.Info($"Hotkey: brought {exe} hwnd={win.Hwnd} to front ok={ok}");
+            return "focused";
+        }
+        Log.Info($"Hotkey: {exe} has no open window");
+        return "not-running";
     }
 
     private Task<T> OnUi<T>(Func<T> f)
@@ -143,6 +196,7 @@ public sealed class AppCore : IDisposable
                 sb.AppendLine($"rules={string.Join(",", Settings.Rules.Select(r => r.Exe))}");
                 sb.AppendLine($"hidden={Hidden.Hidden.Count} startupTask={StartupTask.IsEnabled(Settings.StartupTaskPath)} ({Settings.StartupTaskPath})");
                 sb.AppendLine($"uiaCache={_detector.DescribeCache()}");
+                sb.AppendLine("hotkeys:\n" + (Hotkeys?.Describe() ?? ""));
                 return sb.ToString();
             }
             case "probe":
@@ -185,11 +239,27 @@ public sealed class AppCore : IDisposable
                     return $"enabled={StartupTask.IsEnabled(Settings.StartupTaskPath)} {err}".Trim();
                 });
             }
+            case "hotkeys": return await OnUi(() => Hotkeys?.Describe() ?? "");
+            case "set-hotkey":
+            {
+                // set-hotkey <exe (may contain spaces)> <combo|none>
+                int cut = arg.LastIndexOf(' ');
+                if (cut < 0) return "usage: set-hotkey <exe> <combo|none>";
+                var exe = arg[..cut].Trim().ToLowerInvariant();
+                if (!Hotkey.TryParse(arg[(cut + 1)..], out var hk)) return "bad combo";
+                return await OnUi(() =>
+                {
+                    if (!HasRule(exe)) return "no such rule";
+                    SetHotkey(exe, hk);
+                    return Hotkeys?.ErrorFor(exe) ?? $"ok {hk}";
+                });
+            }
+            case "toggle-app": return await OnUi(() => ToggleApp(arg.ToLowerInvariant()));
             case "set-startup-path":
                 await OnUi(() => { Update(s => s.StartupTaskPath = arg); return 0; });
                 return "ok";
             default:
-                return "unknown command. commands: ping show quit list restore <hwnd> restore-all hide <hwnd> pending rules add-rule <exe> remove-rule <exe> set <rightclick|altf4|uia> <on|off> status probe <x> <y> probe-uia <x> <y> window startup <on|off|status> set-startup-path <path>";
+                return "unknown command. commands: ping show quit list restore <hwnd> restore-all hide <hwnd> pending rules add-rule <exe> remove-rule <exe> set <rightclick|altf4|uia> <on|off> status probe <x> <y> probe-uia <x> <y> window startup <on|off|status> set-startup-path <path> hotkeys set-hotkey <exe> <combo|none> toggle-app <exe>";
         }
     }
 

@@ -180,7 +180,7 @@ public static class N
     public const uint WM_NULL = 0, WM_DESTROY = 0x2, WM_CLOSE = 0x10, WM_QUIT = 0x12, WM_GETICON = 0x7F, WM_NCHITTEST = 0x84,
         WM_KEYDOWN = 0x100, WM_KEYUP = 0x101, WM_SYSKEYDOWN = 0x104, WM_SYSKEYUP = 0x105, WM_COMMAND = 0x111, WM_TIMER = 0x113,
         WM_MOUSEMOVE = 0x200, WM_LBUTTONDOWN = 0x201, WM_LBUTTONUP = 0x202, WM_RBUTTONDOWN = 0x204, WM_RBUTTONUP = 0x205,
-        WM_CONTEXTMENU = 0x7B, WM_APP = 0x8000, WM_USER = 0x400;
+        WM_CONTEXTMENU = 0x7B, WM_HOTKEY = 0x312, WM_APP = 0x8000, WM_USER = 0x400;
     public const int HTERROR = -2, HTTRANSPARENT = -1, HTNOWHERE = 0, HTCLIENT = 1, HTCAPTION = 2, HTMINBUTTON = 8, HTMAXBUTTON = 9, HTCLOSE = 20;
     public const uint LLKHF_INJECTED = 0x10, LLKHF_ALTDOWN = 0x20, LLMHF_INJECTED = 0x1;
     public const uint SMTO_BLOCK = 0x1, SMTO_ABORTIFHUNG = 0x2;
@@ -231,6 +231,10 @@ public static class N
     [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr GetModuleHandle(string? name);
 
+    [DllImport("user32.dll", SetLastError = true)] public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint modifiers, uint vk);
+    [DllImport("user32.dll", SetLastError = true)] public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetKeyNameText(int lParam, StringBuilder sb, int size);
+    [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
     [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
     [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
     [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr hwnd, uint cmd);
