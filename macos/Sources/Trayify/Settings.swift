@@ -34,6 +34,8 @@ struct AppSettings: Codable, Sendable {
     var rightClickMinimize = true
     /// Cmd+W on a close-to-menu-bar app's last window sends it to the menu bar.
     var cmdWToMenuBar = true
+    /// Show the app's Dock badge (unread count) on its menu bar icon while it's hidden.
+    var showBadges = true
 
     init() {}
 
@@ -42,6 +44,7 @@ struct AppSettings: Codable, Sendable {
         rules = try c.decodeIfPresent([AppRule].self, forKey: .rules) ?? []
         rightClickMinimize = try c.decodeIfPresent(Bool.self, forKey: .rightClickMinimize) ?? true
         cmdWToMenuBar = try c.decodeIfPresent(Bool.self, forKey: .cmdWToMenuBar) ?? true
+        showBadges = try c.decodeIfPresent(Bool.self, forKey: .showBadges) ?? true
     }
 }
 

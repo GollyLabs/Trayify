@@ -30,6 +30,11 @@ final class HiddenApp {
     let name: String
     let reason: HideReason
     let hiddenAt = Date()
+    /// The app's Dock badge while hidden (nil = none, "" or text = badge present).
+    var badge: String?
+
+    /// "3", "•" (non-numeric badge) or nil.
+    var badgeText: String? { badge.map { BadgeImage.text($0) ?? "•" } }
 
     init(app: NSRunningApplication, reason: HideReason) {
         self.app = app

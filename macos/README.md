@@ -30,6 +30,13 @@ Carbon hot keys, `NSRunningApplication`).
 
 - **One menu bar icon per hidden app**, showing the app's own icon. Hover for its name. **Click** to restore;
   **right-click** (or Control-click) for *Restore ‹app›*, *Restore All Hidden Apps*, *Open Trayify*.
+- **Unread badges (optional, on by default).** While an app is hidden, its Dock badge (an unread count, or any
+  other badge) shows as a small red badge on its menu bar icon, in its tooltip and in the menus. Trayify reads the
+  Dock's badges through Accessibility every few seconds, only while apps are hidden. Works with any app that badges
+  its Dock icon (Mail, Messages, Slack…).
+- **Fade hidden apps in the Dock (optional).** Turns on the Dock's own "show hidden apps as translucent" setting
+  (`com.apple.dock showhidden`) and briefly restarts the Dock. The switch shows the current system setting;
+  Trayify doesn't change it unless you flip it.
 - **Icons remember where you put them.** ⌘-drag an app's menu bar icon (or Trayify's own) to a new spot and it comes back there the next time that app is hidden, even after Trayify restarts.
 - **Trayify's own menu bar icon** (a tray symbol). Click to open settings. Right-click for: *Open Trayify*,
   *Restore ‹app›* for each hidden app (or a greyed-out *No hidden apps*), *Restore All*,
@@ -46,7 +53,8 @@ Carbon hot keys, `NSRunningApplication`).
 One scrolling window (about 760×860) that follows light/dark mode:
 
 1. **Accessibility banner** (only while permission is missing), with **Grant Access…** and **Open System Settings** buttons.
-2. **General**: *Right-click minimize sends to menu bar*, *⌘W also sends close-to-menu-bar apps to the menu bar*, *Start at login*.
+2. **General**: *Right-click minimize sends to menu bar*, *⌘W also sends close-to-menu-bar apps to the menu bar*,
+   *Show unread badges on menu bar icons*, *Fade hidden apps in the Dock*, *Start at login*.
 3. **Close-to-menu-bar apps**: one row per rule with icon, name, bundle ID, shortcut button, **✕** (clear shortcut) and **Remove**.
 4. **In the menu bar (N)**: hidden apps, each with **Restore**, plus **Restore All**.
 5. **Running apps**: regular (Dock) apps sorted by name, with **Refresh**, a *Send to menu bar now* button, and a **Close to menu bar** switch.
@@ -70,7 +78,7 @@ which can be used alone. While recording, existing shortcuts are paused. If the 
 - **⌘W instead of Alt+F4.** Only ⌘W is caught (only for ruled apps, and only with one standard window).
   Still really closes: ⌘Q, *File › Close*, *Window › Close* chosen from the menu,
   and the app closing windows itself.
-- **Needs Accessibility permission** to catch clicks on window buttons and ⌘W (see below). Without it, shortcuts,
+- **Needs Accessibility permission** to catch clicks on window buttons and ⌘W, and to read Dock badges (see below). Without it, shortcuts,
   menu bar icons, *Send to menu bar now* and the command line still work.
 - **Apps that draw their own title bar buttons** (some Electron/Chromium apps) work only if they report standard
   close and minimize buttons to Accessibility (`AXCloseButton` / `AXMinimizeButton`).
@@ -142,7 +150,8 @@ $T --cmd hide com.apple.TextEdit         # send a running app to the menu bar no
 $T --cmd list                            # hidden apps
 $T --cmd restore com.apple.TextEdit      # or: restore-all
 $T --cmd set-hotkey com.apple.TextEdit ctrl+opt+t   # or "none"
-$T --cmd set rightclick off              # rightclick | cmdw  on|off
+$T --cmd set rightclick off              # rightclick | cmdw | badges | fadedock  on|off
+$T --cmd dock-badges                     # every Dock item and its badge (needs Accessibility)
 $T --cmd startup on                      # on | off | status
 $T --cmd appinfo com.apple.TextEdit      # hidden / active / frontmost state of an app
 $T --cmd buttons com.apple.TextEdit      # window close/minimize button positions (needs Accessibility)
@@ -153,7 +162,7 @@ $T --recover                             # unhide apps left hidden by a crashed 
 
 Commands go over a Unix socket in Trayify's data folder that only your user account can use.
 `$T --help` lists everything. Debug builds (`./build.sh --debug`) add `test-input left|right <x> <y>`, `test-input cmdw` and
-`test-input stall <s>`, which post synthetic input from Trayify itself to test the event tap end to end; release builds
+`test-input stall <s>` (plus `snapshot-item <bundleid>` to save a hidden app's menu bar icon as PNG), which post synthetic input from Trayify itself to test the event tap end to end; release builds
 don't include them.
 
 ---

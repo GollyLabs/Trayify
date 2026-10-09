@@ -35,6 +35,8 @@ final class SettingsModel: ObservableObject {
     @Published var rightClickMinimize = true
     @Published var cmdW = true
     @Published var startAtLogin = false
+    @Published var showBadges = true
+    @Published var fadeDock = false
     @Published var loginNote: String?
     @Published var axTrusted = AXIsProcessTrusted()
     @Published var tapRunning = false
@@ -77,6 +79,8 @@ final class SettingsModel: ObservableObject {
         let s = core.settings
         rightClickMinimize = s.rightClickMinimize
         cmdW = s.cmdWToMenuBar
+        showBadges = s.showBadges
+        fadeDock = DockFade.isEnabled
         startAtLogin = core.startAtLogin
         loginNote = core.loginItemNote
         axTrusted = AXIsProcessTrusted()
@@ -90,7 +94,7 @@ final class SettingsModel: ObservableObject {
         f.timeStyle = .short
         hidden = core.hidden.hidden.map {
             HiddenAppItem(pid: $0.pid, name: $0.name,
-                          details: "\($0.bundleId)  ·  \($0.reason.label)  ·  \(f.string(from: $0.hiddenAt))",
+                          details: "\($0.bundleId)  ·  \($0.reason.label)  ·  \(f.string(from: $0.hiddenAt))" + ($0.badgeText.map { "  ·  \($0 == "•" ? "badge" : "\($0) unread")" } ?? ""),
                           icon: StatusController.icon(for: $0.app, size: 32))
         }
         if refreshRunning || running.isEmpty { refreshRunning_() } else {
@@ -108,6 +112,8 @@ final class SettingsModel: ObservableObject {
 
     func setRightClick(_ on: Bool) { core.update { $0.rightClickMinimize = on } }
     func setCmdW(_ on: Bool) { core.update { $0.cmdWToMenuBar = on } }
+    func setShowBadges(_ on: Bool) { core.setShowBadges(on) }
+    func setFadeDock(_ on: Bool) { core.setFadeDock(on); fadeDock = DockFade.isEnabled }
     func setStartAtLogin(_ on: Bool) {
         if let err = core.setStartAtLogin(on) { loginNote = "Couldn't change the login item: \(err)" }
     }

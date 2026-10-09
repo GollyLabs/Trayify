@@ -30,6 +30,12 @@ struct SettingsView: View {
                 ToggleRow(icon: "command", title: "⌘W also sends close-to-menu-bar apps to the menu bar",
                           caption: "Only for the apps listed below, and only when ⌘W would close the app's last window.",
                           isOn: Binding(get: { model.cmdW }, set: { model.setCmdW($0) }))
+                ToggleRow(icon: "app.badge", title: "Show unread badges on menu bar icons",
+                          caption: "Shows a hidden app's Dock badge (like an unread count) on its menu bar icon. Needs Accessibility.",
+                          isOn: Binding(get: { model.showBadges }, set: { model.setShowBadges($0) }))
+                ToggleRow(icon: "dock.rectangle", title: "Fade hidden apps in the Dock",
+                          caption: "Shows hidden apps' Dock icons dimmed. Changes a Dock setting for all hidden apps and briefly restarts the Dock.",
+                          isOn: Binding(get: { model.fadeDock }, set: { model.setFadeDock($0) }))
                 ToggleRow(icon: "power", title: "Start at login",
                           caption: model.loginNote ?? "Opens Trayify quietly in the menu bar when you log in.",
                           isOn: Binding(get: { model.startAtLogin }, set: { model.setStartAtLogin($0) }))

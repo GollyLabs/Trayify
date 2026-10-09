@@ -70,7 +70,7 @@ final class StatusController: NSObject {
         }
         for h in hidden {
             let pid = h.pid
-            let item = ActionMenuItem("Restore \(h.name)") { [weak self] in self?.core.hidden.restore(pid: pid) }
+            let item = ActionMenuItem("Restore \(h.name)" + (h.badgeText.map { " (\($0))" } ?? "")) { [weak self] in self?.core.hidden.restore(pid: pid) }
             item.image = Self.icon(for: h.app, size: 16)
             menu.addItem(item)
         }
@@ -99,7 +99,7 @@ final class StatusController: NSObject {
 
     func addAppItem(_ h: HiddenApp) {
         removeAppItem(pid: h.pid)
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         // A stable name per app makes macOS remember where the user ⌘-dragged this app's icon.
         // (A second hidden instance of the same app gets a numbered name so names stay unique.)
         let base = "Trayify.app.\(h.bundleId)"
@@ -110,17 +110,28 @@ final class StatusController: NSObject {
         item.autosaveName = name
         if !item.isVisible { item.isVisible = true } // the item is only removed (never hidden) by us
         if let button = item.button {
-            button.image = Self.icon(for: h.app, size: 18)
-            button.imageScaling = .scaleProportionallyDown
-            button.toolTip = "\(h.name) – click to restore"
-            button.setAccessibilityLabel("Restore \(h.name)")
+            button.imageScaling = .scaleNone
             button.target = self
             button.action = #selector(appClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.tag = Int(h.pid)
         }
         appItems[h.pid] = item
+        updateAppItem(h)
         updateMainTip()
+    }
+
+    func image(for pid: pid_t) -> NSImage? { appItems[pid]?.button?.image }
+    func tooltip(for pid: pid_t) -> String? { appItems[pid]?.button?.toolTip }
+
+    /// Redraws a hidden app's icon, badge and tooltip.
+    func updateAppItem(_ h: HiddenApp) {
+        guard let button = appItems[h.pid]?.button else { return }
+        let badge = core.settings.showBadges ? h.badge : nil
+        button.image = BadgeImage.compose(icon: h.app.icon ?? NSImage(systemSymbolName: "app", accessibilityDescription: nil) ?? NSImage(), badge: badge)
+        let unread = badge.map { BadgeImage.text($0).map { " – \($0) unread" } ?? " – has a badge" } ?? ""
+        button.toolTip = "\(h.name)\(unread) – click to restore"
+        button.setAccessibilityLabel("Restore \(h.name)\(unread)")
     }
 
     func removeAppItem(pid: pid_t) {
@@ -159,7 +170,7 @@ final class StatusController: NSObject {
         if Self.isRightClick() {
             let menu = NSMenu()
             menu.autoenablesItems = false
-            menu.addItem(ActionMenuItem("Restore \(h.name)") { [weak self] in self?.core.hidden.restore(pid: pid) })
+            menu.addItem(ActionMenuItem("Restore \(h.name)" + (h.badgeText.map { " (\($0))" } ?? "")) { [weak self] in self?.core.hidden.restore(pid: pid) })
             menu.addItem(ActionMenuItem("Restore All Hidden Apps") { [weak self] in self?.core.hidden.restoreAll() })
             menu.addItem(.separator())
             menu.addItem(ActionMenuItem("Open Trayify") { [weak self] in self?.core.showSettings() })
