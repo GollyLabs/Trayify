@@ -1,0 +1,4 @@
+# Build output of build.sh (the assembled Trayify.app)
+/build/
+/.build/
+/.swiftpm/
