@@ -7,7 +7,7 @@ Trayify is a free **minimize to tray utility**. **Close to tray** instead of qui
 | Platform | Status | Docs |
 |---|---|---|
 | **Windows 11** (x64) | Available: build from source (pre-built downloads coming to [Releases](https://github.com/GollyLabs/Trayify/releases)) | [windows/README.md](windows/README.md) |
-| **macOS** (menu bar) | Coming soon | [macos/](macos/) |
+| **macOS** 14+ (menu bar, Apple silicon and Intel) | Available: build from source | [macos/README.md](macos/README.md) |
 
 ## Windows 11
 
@@ -23,11 +23,17 @@ An alternative to tools such as RBTray, Traymond and 4t Tray Minimizer. Full gui
 
 ## macOS
 
-A native Swift menu bar version is in development in [`macos/`](macos/). Coming soon.
+- **Close to menu bar, per app:** clicking the red close button sends the app to the menu bar instead of closing it (⌘W too, for its last window).
+- **Right-click minimize to menu bar:** right-click the yellow minimize button of any window to hide its app in the menu bar.
+- **Per-app hotkey** to hide, restore or bring an app to the front, one menu bar icon per hidden app, and *Restore all*.
+- **Nothing gets lost:** quitting Trayify, or a crash, restores every hidden app. Optional start at login.
+- Native Swift menu bar app. Public macOS APIs only, no code injection, no network access, no telemetry.
+
+Full guide, permissions and build steps: **[macos/README.md](macos/README.md)**.
 
 ## Repository layout
 
 ```
 windows/   Windows 11 app (C#, WinUI 3 / Windows App SDK) and its test driver
-macos/     macOS app (Swift), coming soon
+macos/     macOS menu bar app (Swift 6, SwiftUI + AppKit)
 ```
