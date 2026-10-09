@@ -3,11 +3,13 @@
 A small Windows 11 tray utility that sends other apps' windows to the notification area
 instead of closing or minimizing them.
 
+Requires Windows 11 (x64). Trayify runs elevated (see [How interception works](#how-interception-works)).
+
 ## Features
 
 - **Close to tray, per app.** The settings window lists open windows (icon, title, exe, PID).
   Turn on **Close to tray** for one and that app's title-bar **X** hides the window to the tray
-  instead of closing it. Rules are keyed by exe name (e.g. `grok bot.exe`), saved across
+  instead of closing it. Rules are keyed by exe name (e.g. `notepad.exe`), saved across
   restarts, and you can remove them under *Close-to-tray apps*.
 - **Per-app global shortcut (optional).** Each close-to-tray rule can have a shortcut. Under
   *Close-to-tray apps*, click **Set shortcut** and press the combination you want: Esc cancels,
@@ -21,7 +23,7 @@ instead of closing or minimizing them.
   - does nothing if the app isn't running (Trayify doesn't launch apps).
 
   The shortcut is registered system-wide with `RegisterHotKey`, so the app doesn't see it while it
-  is assigned. For example, if Ctrl+G is set for Grok Bot, Ctrl+G stops reaching other apps.
+  is assigned. For example, if Ctrl+G is assigned to an app, Ctrl+G no longer reaches any other app.
 - **Right-click minimize to tray (global toggle).** Right-click the minimize button of *any*
   window to hide it in the tray.
 - **Alt+F4 to tray** (optional) for apps that have a close-to-tray rule.
@@ -75,9 +77,8 @@ target app, and returning non-zero swallows that input.
 3. **Which button is under the cursor?**
    - Trayify sends `WM_NCHITTEST` (`SendMessageTimeout`, 100 ms) and checks for `HTCLOSE` or
      `HTMINBUTTON`. Standard Win32 windows, WinUI/UWP-style apps, and Chromium/Electron apps that
-     use the Window Controls Overlay (`titleBarOverlay`) answer this correctly. **Grok Bot is one
-     of them:** its caption buttons report `HTCLOSE`/`HTMAXBUTTON`/`HTMINBUTTON`, so it uses this
-     fast, exact path. DPI-unaware windows get logical coordinates
+     use the Window Controls Overlay (`titleBarOverlay`) answer this correctly, so
+     they use this fast, exact path. DPI-unaware windows get logical coordinates
      (`PhysicalToLogicalPointForPerMonitorDPI`).
    - Some apps draw their own buttons in the client area (e.g. Discord), so hit-testing returns
      `HTCLIENT`. For those, a background worker uses **UI Automation** while the mouse hovers in
@@ -98,7 +99,7 @@ target app, and returning non-zero swallows that input.
    moved, then a reliable foreground switch.
 
 Trayify **runs elevated** (`requireAdministrator` in `app.manifest`). Without elevation, UIPI
-would block hit-testing and hiding windows of elevated apps such as Grok Bot. *Start with Windows*
+would block hit-testing and hiding windows of apps that run elevated. *Start with Windows*
 therefore registers a Task Scheduler logon task with *Run with highest privileges*
 (default path `\Trayify\Trayify at sign-in`, configurable as `StartupTaskPath` in
 `settings.json`). The task runs `Trayify.exe --startup`, which is a GUI exe, so no console window
@@ -113,7 +114,7 @@ Send a command with `Trayify.exe --cmd <command>` or `tools\TrayifyTest pipe <co
 `hide <hwnd>`, `pending`, `rules`, `add-rule <exe>`, `remove-rule <exe>`,
 `set rightclick|altf4|uia on|off`, `probe <x> <y>` (what a click there would do),
 `probe-uia <x> <y>`, `window`, `startup on|off|status`, `set-startup-path <path>`,
-`hotkeys` (registration status), `set-hotkey <exe> <combo|none>` (e.g. `set-hotkey grok bot.exe Ctrl+G`),
+`hotkeys` (registration status), `set-hotkey <exe> <combo|none>` (e.g. `set-hotkey notepad.exe Ctrl+Alt+N`),
 `toggle-app <exe>` (the same action as pressing the app's shortcut).
 
 `tools/TrayifyTest` is the end-to-end test driver. It clicks the real caption buttons with

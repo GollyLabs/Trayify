@@ -15,3 +15,8 @@ artifacts/
 # Test scratch
 *.bmp
 test-output/
+
+# Runtime data (normally in %LOCALAPPDATA%\Trayify, never commit)
+*.log
+settings.json
+hidden.json
