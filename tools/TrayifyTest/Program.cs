@@ -258,6 +258,9 @@ static class T
                 var min = Btn("—", "Minimize", 140); min.FlatAppearance.BorderSize = 0; min.Click += (_, _) => f.WindowState = System.Windows.Forms.FormWindowState.Minimized;
                 bar.Controls.AddRange(new System.Windows.Forms.Control[] { label, min, close });
                 f.Controls.Add(bar);
+                // Pin the buttons to the bar's right edge in real pixels (independent of DPI autoscaling).
+                bar.Layout += (_, _) => { close.Left = bar.ClientSize.Width - close.Width; close.Top = 0; min.Left = close.Left - min.Width; min.Top = 0; };
+                f.Shown += (_, _) => bar.PerformLayout();
                 System.Windows.Forms.Application.Run(f);
                 return 0;
             }

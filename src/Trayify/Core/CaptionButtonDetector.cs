@@ -156,13 +156,14 @@ public sealed class CaptionButtonDetector : IDisposable
     }
 
     /// <summary>UIA lookup of a caption-like button at a point (also used by the probe command).</summary>
-    public static CaptionButton FindButtonAt(IUIAutomation uia, POINT pt, RECT windowRect, out RECT rect, out string name)
+    public static CaptionButton FindButtonAt(IUIAutomation uia, POINT pt, RECT windowRect, out RECT rect, out string name, System.Text.StringBuilder? trace = null)
     {
         rect = default; name = "";
         var el = uia.ElementFromPoint(new tagPOINT { x = pt.X, y = pt.Y });
         var walker = uia.ControlViewWalker;
         for (int depth = 0; el != null && depth < 4; depth++)
         {
+            trace?.Append($" [{el.CurrentControlType} '{el.CurrentName}' {el.CurrentBoundingRectangle.left},{el.CurrentBoundingRectangle.top},{el.CurrentBoundingRectangle.right},{el.CurrentBoundingRectangle.bottom}]");
             if (el.CurrentControlType == UIA_ButtonControlTypeId)
             {
                 name = (el.CurrentName ?? "").Trim();

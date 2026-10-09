@@ -166,8 +166,9 @@ public sealed class AppCore : IDisposable
                     var uia = new Interop.UIAutomationClient.CUIAutomation8();
                     var root = N.RootAt(pt);
                     N.GetWindowRect(root, out var wr);
-                    var kind = CaptionButtonDetector.FindButtonAt(uia, pt, wr, out var r, out var name);
-                    return $"hwnd={(long)root} button={kind} name='{name}' rect={r}";
+                    var trace = new StringBuilder();
+                    var kind = CaptionButtonDetector.FindButtonAt(uia, pt, wr, out var r, out var name, trace);
+                    return $"hwnd={(long)root} button={kind} name='{name}' rect={r} chain:{trace}";
                 });
             }
             case "window":
