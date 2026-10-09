@@ -159,11 +159,17 @@ final class InputInterceptor: @unchecked Sendable {
         let pass = Unmanaged.passUnretained(event)
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
-            if let t = locked({ tap }) { CGEvent.tapEnable(tap: t, enable: true) }
-            Log.warn("Event tap was disabled (\(type.rawValue)); re-enabled")
+            // Ignore the notification our own stop() causes (tap already cleared).
+            if let t = locked({ tap }) {
+                CGEvent.tapEnable(tap: t, enable: true)
+                Log.warn("Event tap was disabled (\(type == .tapDisabledByTimeout ? "timeout" : "user input")); re-enabled")
+            }
             return pass
 
         case .leftMouseDown:
+#if DEBUG
+            if TestInput.stallSeconds > 0 { let s = TestInput.stallSeconds; TestInput.stallSeconds = 0; Thread.sleep(forTimeInterval: s) }
+#endif
             let ruleSet = locked { rules }
             guard !ruleSet.isEmpty,
                   let (pid, button) = AX.classify(event.location, systemWide: systemWide),
@@ -206,5 +212,37 @@ final class InputInterceptor: @unchecked Sendable {
         default:
             return pass
         }
+    }
+}
+
+extension AX {
+    /// Describes an app's windows and the centers of their close/minimize buttons (screen coordinates, top-left origin).
+    static func describeButtons(pid: pid_t) -> String {
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.5)
+        var v: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &v) == .success,
+              let wins = v as? [AXUIElement] else { return "no windows (ax=\(AXIsProcessTrusted()))" }
+        var lines: [String] = []
+        for (i, w) in wins.enumerated() {
+            var parts = ["window \(i) '\(string(w, kAXTitleAttribute) ?? "")' subrole=\(string(w, kAXSubroleAttribute) ?? "-")"]
+            for (name, attr) in [("close", kAXCloseButtonAttribute), ("minimize", kAXMinimizeButtonAttribute)] {
+                guard let b = element(w, attr), let c = center(b) else { continue }
+                parts.append("\(name)=\(Int(c.x)),\(Int(c.y))")
+            }
+            lines.append(parts.joined(separator: " "))
+        }
+        return lines.isEmpty ? "no windows" : lines.joined(separator: "\n")
+    }
+
+    static func center(_ el: AXUIElement) -> CGPoint? {
+        var pv: CFTypeRef?, sv: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(el, kAXPositionAttribute as CFString, &pv) == .success,
+              AXUIElementCopyAttributeValue(el, kAXSizeAttribute as CFString, &sv) == .success,
+              let pv, let sv else { return nil }
+        var p = CGPoint.zero, s = CGSize.zero
+        AXValueGetValue(pv as! AXValue, .cgPoint, &p)
+        AXValueGetValue(sv as! AXValue, .cgSize, &s)
+        return CGPoint(x: p.x + s.width / 2, y: p.y + s.height / 2)
     }
 }

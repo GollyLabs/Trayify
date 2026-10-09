@@ -225,7 +225,7 @@ final class AppCore {
     static let commandHelp = """
     commands: ping | show | quit | status | list | running | rules | add-rule <bundleid> | remove-rule <bundleid> |
       hide <bundleid> | restore <bundleid> | restore-all | set rightclick|cmdw on|off | startup on|off|status |
-      hotkeys | set-hotkey <bundleid> <combo|none> (e.g. ctrl+opt+n) | toggle-app <bundleid> | appinfo <bundleid> | ax | probe <x> <y>
+      hotkeys | set-hotkey <bundleid> <combo|none> (e.g. ctrl+opt+n) | toggle-app <bundleid> | appinfo <bundleid> | buttons <bundleid> | ax | probe <x> <y>
     """
 
     func handleCommand(_ line: String) -> String {
@@ -294,6 +294,15 @@ final class AppCore {
                 return hotkeys.error(for: bid) ?? "ok \(hk?.spec ?? "none")"
             }
         case "toggle-app": return toggleApp(arg)
+        case "buttons":
+            guard let app = Self.runningApp(arg) else { return "not running" }
+            return AX.describeButtons(pid: app.processIdentifier)
+#if DEBUG
+        case "test-input":
+            // DEBUG builds only: post synthetic input from this (Accessibility-trusted) process so the event tap
+            // can be exercised end to end. Never compiled into release builds.
+            return TestInput.run(arg)
+#endif
         case "appinfo":
             guard let app = Self.runningApp(arg) else { return "not running" }
             let front = NSWorkspace.shared.frontmostApplication

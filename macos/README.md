@@ -144,13 +144,16 @@ $T --cmd set-hotkey com.apple.TextEdit ctrl+opt+t   # or "none"
 $T --cmd set rightclick off              # rightclick | cmdw  on|off
 $T --cmd startup on                      # on | off | status
 $T --cmd appinfo com.apple.TextEdit      # hidden / active / frontmost state of an app
+$T --cmd buttons com.apple.TextEdit      # window close/minimize button positions (needs Accessibility)
 $T --cmd probe 20 15                     # what button is at this screen point? (needs Accessibility)
 $T --cmd quit                            # quit (restores hidden apps)
 $T --recover                             # unhide apps left hidden by a crashed run
 ```
 
 Commands go over a Unix socket in Trayify's data folder that only your user account can use.
-`$T --help` lists everything.
+`$T --help` lists everything. Debug builds (`./build.sh --debug`) add `test-input left|right <x> <y>`, `test-input cmdw` and
+`test-input stall <s>`, which post synthetic input from Trayify itself to test the event tap end to end; release builds
+don't include them.
 
 ---
 
