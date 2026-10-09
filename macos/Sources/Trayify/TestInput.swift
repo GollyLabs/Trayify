@@ -17,6 +17,11 @@ enum TestInput {
             let d = CGEvent(keyboardEventSource: src, virtualKey: 0x0D, keyDown: true); d?.flags = .maskCommand
             let u = CGEvent(keyboardEventSource: src, virtualKey: 0x0D, keyDown: false); u?.flags = .maskCommand
             post(d); post(u)
+        case "position":
+            // Simulates the user ⌘-dragging a status item: AppKit stores the result in our own defaults.
+            guard a.count == 3, let v = Double(a[2]) else { return "usage: test-input position <autosaveName> <value>" }
+            UserDefaults.standard.set(v, forKey: "NSStatusItem Preferred Position \(a[1])")
+            return "set"
         case "stall":
             stallSeconds = a.count > 1 ? Double(a[1]) ?? 0 : 0
             return "next intercepted mouse-down stalls the tap for \(stallSeconds)s"

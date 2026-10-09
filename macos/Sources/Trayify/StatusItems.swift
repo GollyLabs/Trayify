@@ -27,6 +27,7 @@ final class StatusController: NSObject {
 
     init(core: AppCore) {
         self.core = core
+        StatusController.prepareAutosave("TrayifyMain")
         main = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         super.init()
         if let button = main.button {
@@ -99,6 +100,15 @@ final class StatusController: NSObject {
     func addAppItem(_ h: HiddenApp) {
         removeAppItem(pid: h.pid)
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        // A stable name per app makes macOS remember where the user ⌘-dragged this app's icon.
+        // (A second hidden instance of the same app gets a numbered name so names stay unique.)
+        let base = "Trayify.app.\(h.bundleId)"
+        let used = Set(appItems.values.compactMap(\.autosaveName))
+        var name = base, n = 2
+        while used.contains(name) { name = "\(base).\(n)"; n += 1 }
+        Self.prepareAutosave(name)
+        item.autosaveName = name
+        if !item.isVisible { item.isVisible = true } // the item is only removed (never hidden) by us
         if let button = item.button {
             button.image = Self.icon(for: h.app, size: 18)
             button.imageScaling = .scaleProportionallyDown
@@ -114,8 +124,33 @@ final class StatusController: NSObject {
     }
 
     func removeAppItem(pid: pid_t) {
-        if let item = appItems.removeValue(forKey: pid) { NSStatusBar.system.removeStatusItem(item) }
+        if let item = appItems.removeValue(forKey: pid) { Self.removeKeepingPosition(item) }
         updateMainTip()
+    }
+
+    // AppKit deletes "NSStatusItem Preferred Position <autosaveName>" when an item is removed (on hide→restore),
+    // so Trayify keeps its own copy of each position and puts it back before the item is created again.
+    private static let positionsKey = "TrayifyStatusItemPositions"
+    private static func positionKey(_ name: String) -> String { "NSStatusItem Preferred Position \(name)" }
+
+    /// Before creating an item with this autosave name: restore the remembered position if AppKit dropped it.
+    static func prepareAutosave(_ name: String) {
+        let d = UserDefaults.standard
+        guard d.object(forKey: positionKey(name)) == nil,
+              let saved = (d.dictionary(forKey: positionsKey) ?? [:])[name] else { return }
+        d.set(saved, forKey: positionKey(name))
+    }
+
+    /// Remembers an item's current position (if the user has moved it), then removes it.
+    private static func removeKeepingPosition(_ item: NSStatusItem) {
+        let d = UserDefaults.standard
+        let name = item.autosaveName as String
+        if let pos = d.object(forKey: positionKey(name)) {
+            var all = d.dictionary(forKey: positionsKey) ?? [:]
+            all[name] = pos
+            d.set(all, forKey: positionsKey)
+        }
+        NSStatusBar.system.removeStatusItem(item)
     }
 
     @objc private func appClicked(_ sender: NSStatusBarButton) {
@@ -136,6 +171,6 @@ final class StatusController: NSObject {
 
     func removeAll() {
         for pid in Array(appItems.keys) { removeAppItem(pid: pid) }
-        NSStatusBar.system.removeStatusItem(main)
+        Self.removeKeepingPosition(main)
     }
 }

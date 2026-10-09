@@ -30,6 +30,7 @@ Carbon hot keys, `NSRunningApplication`).
 
 - **One menu bar icon per hidden app**, showing the app's own icon. Hover for its name. **Click** to restore;
   **right-click** (or Control-click) for *Restore ‹app›*, *Restore All Hidden Apps*, *Open Trayify*.
+- **Icons remember where you put them.** ⌘-drag an app's menu bar icon (or Trayify's own) to a new spot and it comes back there the next time that app is hidden, even after Trayify restarts.
 - **Trayify's own menu bar icon** (a tray symbol). Click to open settings. Right-click for: *Open Trayify*,
   *Restore ‹app›* for each hidden app (or a greyed-out *No hidden apps*), *Restore All*,
   *Right-click minimize sends to menu bar* (checkmark), *Quit Trayify (restores hidden apps)*.
